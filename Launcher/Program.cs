@@ -4,19 +4,25 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 class Program
 {
+    [DllImport("kernel32.dll")]
+    static extern bool AllocConsole();
     static string repoUrl = "https://github.com/Ivan-Shevliakov/ReprortsApp";
     static string rawUrl = "https://raw.githubusercontent.com/Ivan-Shevliakov/ReprortsApp/main";
-    static string localPath = "ReportsApp";
-    static string windowsPath = "ReportsApp/Windows"; 
+    static string localPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+    "ReportsApp");
+    static string windowsPath = Path.Combine(localPath, "Windows");
     static string versionFile = "version.txt";
     static string exeName = "Raports.exe"; // Или какое имя у вашего EXE?
 
     static async Task Main(string[] args)
     {
+        AllocConsole();
         Console.WriteLine("=== ReportsApp Launcher ===");
         Console.WriteLine("Checking for updates...");
 
