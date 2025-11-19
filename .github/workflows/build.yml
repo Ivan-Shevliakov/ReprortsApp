@@ -1,4 +1,4 @@
-name: Build Unity Project
+name: Build Launcher Only
 
 on:
   push:
@@ -6,50 +6,25 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write  # ← ДАЕМ ПРАВА НА ЗАПИСЬ
+    runs-on: windows-latest
+    
     steps:
-    - name: Checkout repository
+    - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
       with:
-        lfs: true
-        fetch-depth: 0
+        dotnet-version: '6.0.x'
 
-    - name: Cache Library
-      uses: actions/cache@v3
+    - name: Build Launcher
+      run: |
+        cd Launcher
+        dotnet publish -c Release -r win-x64 -o ../LauncherDist --self-contained true
+
+    - name: Upload Launcher
+      uses: actions/upload-artifact@v4
       with:
-        path: Library
-        key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-        restore-keys: |
-          Library-
-
-    - name: Build Unity Project
-      uses: game-ci/unity-builder@v4
-      env:
-        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-      with:
-        targetPlatform: StandaloneWindows64
-        buildName: ReportsApp
-        buildsPath: Builds/Windows
-
-    - name: Update Version
-      run: |
-        echo "1.0.${{ github.run_number }}" > version.txt
-        echo "Updated to version 1.0.${{ github.run_number }}"
-
-    - name: Setup Git
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-
-    - name: Commit and Push Build
-      run: |
-        git add version.txt Builds/
-        git diff --staged --quiet || git commit -m "CI: Auto-build version 1.0.${{ github.run_number }}"
-        git push
-      env:
-        # Используем встроенный GITHUB_TOKEN с правами write
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: ReportsApp-Launcher
+        path: LauncherDist/
+        retention-days: 30
