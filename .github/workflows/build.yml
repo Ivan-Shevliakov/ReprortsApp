@@ -1,0 +1,31 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Update Version
+      run: |
+        echo "1.0.${{ github.run_number }}" > version.txt
+        echo "Version: 1.0.${{ github.run_number }}"
+
+    - name: Setup Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Commit Version Update
+      run: |
+        git add version.txt
+        git diff --staged --quiet || git commit -m "CI: Update to version 1.0.${{ github.run_number }}"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
