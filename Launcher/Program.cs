@@ -1,18 +1,19 @@
 ﻿using System;
-using System.IO;
-using System.Net.Http;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 class Program
 {
     static string repoUrl = "https://github.com/Ivan-Shevliakov/ReprortsApp";
     static string rawUrl = "https://raw.githubusercontent.com/Ivan-Shevliakov/ReprortsApp/main";
-    static string localPath = "ReportsApp"; // Основная папка
-    static string windowsPath = "ReportsApp/Builds/Windows"; // Путь к Windows версии
+    static string localPath = "ReportsApp";
+    static string windowsPath = "ReportsApp/Windows"; 
     static string versionFile = "version.txt";
-    static string exeName = "Raports.exe"; // Имя вашего exe файла
+    static string exeName = "Raports.exe"; // Или какое имя у вашего EXE?
 
     static async Task Main(string[] args)
     {
@@ -21,11 +22,15 @@ class Program
 
         try
         {
+            Console.WriteLine($"Current directory: {Directory.GetCurrentDirectory()}");
+            Console.WriteLine($"Local path: {Path.GetFullPath(localPath)}");
+            Console.WriteLine($"Windows path: {Path.GetFullPath(windowsPath)}");
+
             string localVersion = await GetLocalVersion();
             string remoteVersion = await GetRemoteVersion();
 
-            Console.WriteLine($"Local version: {localVersion}");
-            Console.WriteLine($"Remote version: {remoteVersion}");
+            Console.WriteLine($"Local version: '{localVersion}'");
+            Console.WriteLine($"Remote version: '{remoteVersion}'");
 
             if (localVersion != remoteVersion || !Directory.Exists(localPath))
             {
@@ -43,10 +48,11 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey();
+            Console.WriteLine($"ERROR: {ex.Message}");
         }
+
+        Console.WriteLine("Press any key to exit...");
+        Console.ReadKey();
     }
 
     static async Task<string> GetLocalVersion()
@@ -62,8 +68,9 @@ class Program
         {
             return (await client.GetStringAsync($"{rawUrl}/{versionFile}")).Trim();
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error getting remote version: {ex.Message}");
             return "0.0.0";
         }
     }
@@ -84,7 +91,6 @@ class Program
         using var archive = new ZipArchive(stream);
         archive.ExtractToDirectory(tempPath);
 
-        // Копируем ВСЮ структуру из репозитория
         string sourcePath = Path.Combine(tempPath, "ReprortsApp-main");
         if (Directory.Exists(localPath))
             Directory.Delete(localPath, true);
@@ -111,7 +117,6 @@ class Program
 
         foreach (DirectoryInfo subDir in dir.GetDirectories())
         {
-            // Пропускаем папку .git
             if (subDir.Name == ".git") continue;
 
             string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
@@ -127,32 +132,31 @@ class Program
 
     static void LaunchApp()
     {
-        // Теперь EXE находится в папке Builds/Windows/
-        string exePath = Path.Combine(windowsPath, exeName);
 
-        if (File.Exists(exePath))
-        {
+       
+            string workingDir = Path.GetFullPath(windowsPath);
+            string exePath = Path.Combine(workingDir, exeName);
+
             Console.WriteLine($"Launching: {exePath}");
-            Process.Start(new ProcessStartInfo
+
+            if (File.Exists(exePath))
             {
-                FileName = exePath,
-                WorkingDirectory = Path.GetFullPath(windowsPath), // Рабочая папка = папка с EXE
-                UseShellExecute = true
-            });
-        }
-        else
-        {
-            Console.WriteLine($"Application not found: {exePath}");
-            Console.WriteLine("Available files:");
-            if (Directory.Exists(windowsPath))
-            {
-                foreach (var file in Directory.GetFiles(windowsPath))
+                try
                 {
-                    Console.WriteLine($"  - {Path.GetFileName(file)}");
+                    // Самый простой способ - Process.Start с абсолютным путем
+                    Process.Start(exePath);
+                    Console.WriteLine("✅ Application launched!");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Failed to launch: {ex.Message}");
                 }
             }
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey();
-        }
+            else
+            {
+                Console.WriteLine($"❌ File not found: {exePath}");
+            }
+        
+
     }
 }
