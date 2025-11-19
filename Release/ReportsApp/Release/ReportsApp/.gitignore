@@ -1,0 +1,24 @@
+ 
+## Visual Studio ##
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.csproj.user
+*.csproj.vspscc
+
+## Unity ##
+[Tt]emp/
+[Ll]ibrary/
+[Bb]uild/
+*.private
+*.private.meta
+*.unityproj
+*.sln
+*.opendb
+*.VC.db
+
+## OS ##
+.DS_Store
+Thumbs.db
