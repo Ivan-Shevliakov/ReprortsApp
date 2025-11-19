@@ -1,11 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<OutputType>Exe</OutputType>
+		<OutputType>WinExe</OutputType>
+		<!-- WinExe вместо Exe -->
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyTitle>ReportsApp Launcher</AssemblyTitle>
+		<PublishSingleFile>true</PublishSingleFile>
 	</PropertyGroup>
 
 </Project>
