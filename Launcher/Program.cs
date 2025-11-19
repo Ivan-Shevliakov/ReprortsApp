@@ -1,5 +1,4 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -11,59 +10,185 @@ class Program
 {
     [DllImport("kernel32.dll")]
     static extern bool AllocConsole();
+
+    [DllImport("user32.dll")]
+    static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    const int SW_SHOW = 5;
+
     static string repoUrl = "https://github.com/Ivan-Shevliakov/ReprortsApp";
     static string rawUrl = "https://raw.githubusercontent.com/Ivan-Shevliakov/ReprortsApp/main";
-    static string localPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-    "ReportsApp");
-    static string windowsPath = Path.Combine(localPath, "Windows");
+
+    static string appDataPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "ReportsApp/report");
+
+    static string installPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "ReportsApp");
+
+    static string windowsPath = Path.Combine(appDataPath, "Windows");
     static string versionFile = "version.txt";
-    static string exeName = "Raports.exe"; // Или какое имя у вашего EXE?
+    static string exeName = "Raports.exe";
+    static string launcherExeName = "ReportsAppLauncher.exe";
 
     static async Task Main(string[] args)
     {
-        AllocConsole();
-        Console.WriteLine("=== ReportsApp Launcher ===");
-        Console.WriteLine("Checking for updates...");
+        bool showConsole = args.Contains("-debug") || args.Contains("-console");
+
+        if (showConsole)
+        {
+            ShowConsoleWindow();
+            Console.WriteLine("=== ReportsApp Launcher ===");
+        }
 
         try
         {
-            Console.WriteLine($"Current directory: {Directory.GetCurrentDirectory()}");
-            Console.WriteLine($"Local path: {Path.GetFullPath(localPath)}");
-            Console.WriteLine($"Windows path: {Path.GetFullPath(windowsPath)}");
+            AllocConsole();
+            if (!IsLauncherInstalled() || showConsole)
+            {
+                InstallLauncher();
+                CreateDesktopShortcut();
+            }
+
+            if (showConsole) Console.WriteLine("Checking for updates...");
 
             string localVersion = await GetLocalVersion();
             string remoteVersion = await GetRemoteVersion();
 
-            Console.WriteLine($"Local version: '{localVersion}'");
-            Console.WriteLine($"Remote version: '{remoteVersion}'");
-
-            if (localVersion != remoteVersion || !Directory.Exists(localPath))
+            if (showConsole)
             {
-                Console.WriteLine("Update found! Downloading...");
+                Console.WriteLine($"Local version: '{localVersion}'");
+                Console.WriteLine($"Remote version: '{remoteVersion}'");
+            }
+
+            if (localVersion != remoteVersion || !Directory.Exists(appDataPath))
+            {
+                if (showConsole) Console.WriteLine("Update found! Downloading...");
                 await DownloadAndExtractUpdate();
                 await SaveLocalVersion(remoteVersion);
-                Console.WriteLine("Update completed!");
+                if (showConsole) Console.WriteLine("Update completed!");
             }
             else
             {
-                Console.WriteLine("No updates found.");
+                if (showConsole) Console.WriteLine("No updates found.");
             }
 
             LaunchApp();
+            Console.WriteLine("✅ Application launched successfully!");
+            Console.WriteLine("Press any key to close...");
+            Console.ReadKey();
+
+            if (showConsole)
+            {
+                Console.WriteLine("✅ Application launched successfully!");
+                Console.WriteLine("Press any key to close...");
+                Console.ReadKey();
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ERROR: {ex.Message}");
+            ShowConsoleWindow();
+            Console.WriteLine($"❌ ERROR: {ex.Message}");
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
         }
+    }
 
-        Console.WriteLine("Press any key to exit...");
-        Console.ReadKey();
+    static bool IsLauncherInstalled()
+    {
+        string installedLauncherPath = Path.Combine(installPath, launcherExeName);
+        return File.Exists(installedLauncherPath);
+    }
+
+    static void InstallLauncher()
+    {
+        try
+        {
+            // Создаем папку установки
+            if (!Directory.Exists(installPath))
+            {
+                Directory.CreateDirectory(installPath);
+            }
+
+            // Копируем лаунчер в папку установки
+            string currentExePath = Process.GetCurrentProcess().MainModule.FileName;
+            string installedLauncherPath = Path.Combine(installPath, launcherExeName);
+
+            if (!File.Exists(installedLauncherPath) ||
+                File.GetLastWriteTime(currentExePath) > File.GetLastWriteTime(installedLauncherPath))
+            {
+                File.Copy(currentExePath, installedLauncherPath, true);
+                Console.WriteLine($"✅ Launcher installed to: {installPath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Could not install launcher: {ex.Message}");
+        }
+    }
+
+    static void CreateDesktopShortcut()
+    {
+        try
+        {
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string shortcutPath = Path.Combine(desktopPath, "ReportsApp.lnk");
+            string installedLauncherPath = Path.Combine(installPath, launcherExeName);
+            string iconPath = installedLauncherPath;
+            string vbsScript = $"""
+                Set oWS = WScript.CreateObject("WScript.Shell")
+                Set oLink = oWS.CreateShortcut("{shortcutPath}")
+                oLink.TargetPath = "{installedLauncherPath}"
+                oLink.WorkingDirectory = "{installPath}"
+                oLink.Description = "ReportsApp Launcher"
+                oLink.IconLocation = "{iconPath}, 0"
+                oLink.Save
+                """;
+
+            string vbsPath = Path.Combine(Path.GetTempPath(), "create_shortcut.vbs");
+            File.WriteAllText(vbsPath, vbsScript);
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "wscript.exe",
+                Arguments = $"\"{vbsPath}\"",
+                WindowStyle = ProcessWindowStyle.Hidden,
+                UseShellExecute = true
+            }).WaitForExit(3000);
+
+            File.Delete(vbsPath);
+            Console.WriteLine($"✅ Desktop shortcut created: {shortcutPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Could not create desktop shortcut: {ex.Message}");
+        }
+    }
+
+    static void ShowConsoleWindow()
+    {
+        var handle = GetConsoleWindow();
+        if (handle == IntPtr.Zero)
+        {
+            AllocConsole();
+        }
+        else
+        {
+            ShowWindow(handle, SW_SHOW);
+        }
+    }
+
+    static IntPtr GetConsoleWindow()
+    {
+        [DllImport("kernel32.dll")]
+        static extern IntPtr GetConsoleWindow();
+        return GetConsoleWindow();
     }
 
     static async Task<string> GetLocalVersion()
     {
-        string path = Path.Combine(localPath, versionFile);
+        string path = Path.Combine(appDataPath, versionFile);
         return File.Exists(path) ? (await File.ReadAllTextAsync(path)).Trim() : "0.0.0";
     }
 
@@ -76,40 +201,34 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error getting remote version: {ex.Message}");
-            return "0.0.0";
+            throw new Exception($"Failed to get remote version: {ex.Message}");
         }
     }
 
     static async Task DownloadAndExtractUpdate()
     {
         using var client = new HttpClient();
-
-        Console.WriteLine("Downloading update...");
         var response = await client.GetAsync($"{repoUrl}/archive/refs/heads/main.zip");
         using var stream = await response.Content.ReadAsStreamAsync();
 
-        string tempPath = "temp_update";
+        string tempPath = Path.Combine(Path.GetTempPath(), "ReportsApp_update");
         if (Directory.Exists(tempPath))
             Directory.Delete(tempPath, true);
 
-        Console.WriteLine("Extracting files...");
         using var archive = new ZipArchive(stream);
         archive.ExtractToDirectory(tempPath);
 
         string sourcePath = Path.Combine(tempPath, "ReprortsApp-main");
-        if (Directory.Exists(localPath))
-            Directory.Delete(localPath, true);
+        if (Directory.Exists(appDataPath))
+            Directory.Delete(appDataPath, true);
 
-        CopyDirectory(sourcePath, localPath);
-
+        CopyDirectory(sourcePath, appDataPath);
         Directory.Delete(tempPath, true);
     }
 
     static void CopyDirectory(string sourceDir, string destinationDir)
     {
         var dir = new DirectoryInfo(sourceDir);
-
         if (!dir.Exists)
             throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
 
@@ -124,7 +243,6 @@ class Program
         foreach (DirectoryInfo subDir in dir.GetDirectories())
         {
             if (subDir.Name == ".git") continue;
-
             string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
             CopyDirectory(subDir.FullName, newDestinationDir);
         }
@@ -132,37 +250,28 @@ class Program
 
     static async Task SaveLocalVersion(string version)
     {
-        string path = Path.Combine(localPath, versionFile);
+        string path = Path.Combine(appDataPath, versionFile);
         await File.WriteAllTextAsync(path, version);
     }
 
     static void LaunchApp()
     {
+        AllocConsole();
+        string workingDir = Path.GetFullPath(windowsPath);
+        string exePath = Path.Combine(workingDir, exeName);
 
-       
-            string workingDir = Path.GetFullPath(windowsPath);
-            string exePath = Path.Combine(workingDir, exeName);
-
-            Console.WriteLine($"Launching: {exePath}");
-
-            if (File.Exists(exePath))
+        if (File.Exists(exePath))
+        {
+            Process.Start(new ProcessStartInfo
             {
-                try
-                {
-                    // Самый простой способ - Process.Start с абсолютным путем
-                    Process.Start(exePath);
-                    Console.WriteLine("✅ Application launched!");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ Failed to launch: {ex.Message}");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"❌ File not found: {exePath}");
-            }
-        
-
+                FileName = exePath,
+                WorkingDirectory = workingDir,
+                UseShellExecute = true
+            });
+        }
+        else
+        {
+            throw new Exception($"Application not found: {exePath}");
+        }
     }
 }

@@ -2,11 +2,19 @@
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<!-- WinExe вместо Exe -->
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PublishSingleFile>true</PublishSingleFile>
+		<ApplicationIcon>app.ico</ApplicationIcon>
+		<AssemblyTitle>ReportsApp Launcher</AssemblyTitle>
+		<AssemblyDescription>ReportsApp Application Launcher</AssemblyDescription>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<Content Include="app.ico">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 
 </Project>
