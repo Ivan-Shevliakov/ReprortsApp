@@ -76,8 +76,6 @@ class Program
 
             LaunchApp();
             Console.WriteLine("✅ Application launched successfully!");
-            Console.WriteLine("Press any key to close...");
-            Console.ReadKey();
 
             if (showConsole)
             {
@@ -253,9 +251,28 @@ class Program
         string path = Path.Combine(appDataPath, versionFile);
         await File.WriteAllTextAsync(path, version);
     }
+    public static void KillProcessByName(string processName)
+    {
+        Process[] processes = Process.GetProcessesByName(processName);
 
+        foreach (Process process in processes)
+        {
+            try
+            {
+                process.Kill();
+                process.WaitForExit(); 
+            }
+            catch 
+            {
+                
+            }
+        }
+
+        
+    }
     static void LaunchApp()
     {
+        KillProcessByName("Raports");
         AllocConsole();
         string workingDir = Path.GetFullPath(windowsPath);
         string exePath = Path.Combine(workingDir, exeName);
