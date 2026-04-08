@@ -38,6 +38,7 @@
             this.textBox1.Location = new System.Drawing.Point(162, 198);
             this.textBox1.Multiline = true;
             this.textBox1.Name = "textBox1";
+            this.textBox1.ReadOnly = true;
             this.textBox1.Size = new System.Drawing.Size(170, 44);
             this.textBox1.TabIndex = 0;
             this.textBox1.Text = "Времени на операцию осталось менее 20 минут!";
