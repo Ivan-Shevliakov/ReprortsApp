@@ -16,6 +16,7 @@ namespace ShowNotificationSystemWindows
         public Form2()
         {
             InitializeComponent();
+            this.CenterToScreen();
             button1.Click += ButtonOnclick;
             SystemSounds.Hand.Play();
         }
